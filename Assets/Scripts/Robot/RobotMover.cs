@@ -8,7 +8,11 @@ public class RobotMover : MonoBehaviour
     [SerializeField] private float _moveSpeed = 5f;
     [SerializeField] private float _rotationSpeed = 180f;
     [SerializeField] private Animator _animator;
+    [SerializeField] private AnimationCurve _accelerationCurve; // Кривая ускорения
+    [SerializeField] private float _accelerationDuration = 1f; // Продолжительность ускорения до максимальной скорости
 
+    private float _currentSpeed = 0f; // Текущая скорость
+    private float _accelerationTimer = 0f; // Таймер для отслеживания времени ускорения
     private Rigidbody2D _rigidbody2D;
     private Vector2 _movementDirection;
 
@@ -36,8 +40,29 @@ public class RobotMover : MonoBehaviour
 
     void MoveRobot()
     {
-        Vector2 movement = _movementDirection * _moveSpeed * Time.fixedDeltaTime;
+        if (_movementDirection == Vector2.zero)
+        {
+            // Если направление движения равно нулю, сбрасываем скорость и таймер ускорения
+            _currentSpeed = 0f;
+            _accelerationTimer = 0f;
+            _animator.SetFloat("speed", 0f);
+            return;
+        }
 
+        // Увеличиваем таймер ускорения
+        _accelerationTimer += Time.fixedDeltaTime;
+
+        // Рассчитываем текущую скорость с использованием кривой ускорения
+        float accelerationProgress = Mathf.Clamp01(_accelerationTimer / _accelerationDuration);
+        float accelerationFactor = _accelerationCurve.Evaluate(accelerationProgress);
+        _currentSpeed = Mathf.Lerp(0f, _moveSpeed, accelerationFactor);
+
+        // Обновляем параметр speed в аниматоре на основе текущей скорости
+        float normalizedSpeed = _currentSpeed / _moveSpeed;
+        _animator.SetFloat("Speed", normalizedSpeed);
+
+        // Перемещаем объект на текущую скорость
+        Vector2 movement = _movementDirection * _currentSpeed * Time.fixedDeltaTime;
         _rigidbody2D.MovePosition(_rigidbody2D.position + movement);
     }
 
